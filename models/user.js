@@ -4,13 +4,21 @@ var Schema = mongoose.Schema;
 var ObjectId = Schema.ObjectId;
 var bcrypt = require('bcrypt');
 var userSchema = new Schema({
-  id: ObjectId,
-  username: String,
-  password: String
+  local: {
+    id: ObjectId,
+    username: String,
+    password: String
+  },
+  facebook: {
+    id: String,
+    token: String,
+    email: String,
+    name: String
+  }
 });
 
 userSchema.methods.validPassword = function(password, cb) {
-  bcrypt.compare(password, this.password, function(err, isMatch) {
+  bcrypt.compare(password, this.local.password, function(err, isMatch) {
     return cb(err, isMatch);
   });
 };
@@ -18,14 +26,14 @@ userSchema.methods.validPassword = function(password, cb) {
 userSchema.pre('save', function(next) {
   var user = this;
 console.log('presaving')
-  if(!user.isModified('password')) return next();
+  if(!user.isModified('local.password')) return next();
 
   bcrypt.genSalt(10, function(err, salt) {
     if (err) return next(err);
 
-    bcrypt.hash(user.password, salt, function(err, hash) {
+    bcrypt.hash(user.local.password, salt, function(err, hash) {
       if (err) return next(err);
-      user.password = hash;
+      user.local.password = hash;
       next();
     })
   })

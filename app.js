@@ -6,8 +6,11 @@ var csrf                 = require('csurf');
 var mongoose             = require('mongoose');
 var passport             = require('passport');
 var LocalStrategy        = require('passport-local').Strategy;
+var FacebookStrategy     = require('passport-facebook').Strategy;
 var flash                = require('connect-flash');
+var authConfig           = require('./config/auth');
 var app                  = express();
+
 
 mongoose.connect('mongodb://localhost');
 
@@ -55,7 +58,7 @@ passport.use('signup', new LocalStrategy({
         if (user) {
           return done(null, false, req.flash('message', 'User exists'));
         } else {
-          var newUser = new User({username: req.body.username, password: req.body.password});
+          var newUser = new User({ local: { username: req.body.username, password: req.body.password } });
           newUser.save(function(err) {
             if (err) throw err;
             return done(null, newUser);
@@ -70,7 +73,7 @@ passport.use('signup', new LocalStrategy({
 
 // Set user information in the user cookie, if possible
 passport.use(new LocalStrategy(function(username, password, done) {
-  User.findOne({ username: username }, function(err, user) {
+  User.findOne({ 'local.username': username }, function(err, user) {
     if (err) { return done(err); }
     if (!user) {
       return done(null, false, { message: 'Incorrect username.' });
@@ -81,6 +84,42 @@ passport.use(new LocalStrategy(function(username, password, done) {
     }
   })
 }));
+
+passport.use(new FacebookStrategy({
+    clientID: authConfig.facebookAuth.clientID,
+    clientSecret: authConfig.facebookAuth.clientSecret,
+    callbackURL: authConfig.facebookAuth.callbackUrl
+}, function(token, refreshToken, profile, done) {
+
+  process.nextTick(function() {
+    User.findOne({ 'facebook.id': profile.id }, function(err, user) {
+
+      if (err) return done(err);
+
+      if (user) {
+        return done(null, user);
+      } else {
+
+        var newUser = new User({
+          facebook: {
+            id: profile.id,
+            token: token,
+            name: profile.name.givenName + ' ' + profile.name.familyName,
+            email: profile.emails[0].value
+          }
+        });
+
+        newUser.save(function(err) {
+          if (err) throw err;
+          return done(null, newUser);
+        });
+      }
+    })
+  });
+
+}));
+
+
 
 passport.serializeUser(function(user, done) {
   console.log(user)
