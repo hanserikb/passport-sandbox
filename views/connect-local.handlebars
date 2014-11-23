@@ -1,0 +1,8 @@
+<h2>Add username & password</h2>
+
+<form action="/connect/local" method="POST">
+    <input type="text" id="username" name="username"/>
+    <input type="password" id="password" name="password"/>
+    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+    <input type="submit" value="Add"/>
+</form>

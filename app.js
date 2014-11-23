@@ -52,22 +52,40 @@ passport.use('signup', new LocalStrategy({
     passReqToCallback: true
   }, function(req, username, password, done) {
     process.nextTick(function() {
-      User.findOne({ username: username }, function(err, user) {
-        if (err) {
-          return done(err);
-        }
+      console.log('the user', req.user)
+      if(!req.user) {
+        User.findOne({ username: username }, function(err, user) {
+          if (err) {
+            return done(err);
+          }
 
-        if (user) {
-          return done(null, false, req.flash('message', 'User exists'));
-        } else {
-          var newUser = new User({ local: { username: req.body.username, password: req.body.password } });
-          newUser.save(function(err) {
-            if (err) throw err;
-            return done(null, newUser);
-          })
-        }
-      });
+          if (user) {
+            return done(null, false, req.flash('message', 'User exists'));
+          } else {
+            var newUser = new User();
+            newUser.local.username = username;
+            newUser.local.password = newUser.generateHash(password);
+            newUser.save(function(err) {
+              console.log('done saveing')
+              if (err) throw err;
+              return done(null, newUser);
+            });
+          }
+        });
+      } else {
+        var user = req.user;
+        user.local = {
+          username: req.body.username,
+          password: user.generateHash(req.body.password)
+        };
+
+        user.save(function(err) {
+          if (err) throw err;
+          return done(null, user);
+        });
+      }
     });
+
   }
 
 ));
@@ -88,35 +106,53 @@ passport.use(new LocalStrategy(function(username, password, done) {
 }));
 
 passport.use(new FacebookStrategy({
-    clientID: authConfig.facebookAuth.clientID,
-    clientSecret: authConfig.facebookAuth.clientSecret,
-    callbackURL: authConfig.facebookAuth.callbackUrl
-}, function(token, refreshToken, profile, done) {
+  clientID: authConfig.facebookAuth.clientID,
+  clientSecret: authConfig.facebookAuth.clientSecret,
+  callbackURL: authConfig.facebookAuth.callbackUrl,
+  passReqToCallback: true
+}, function(req, token, refreshToken, profile, done) {
 
   process.nextTick(function() {
-    User.findOne({ 'facebook.id': profile.id }, function(err, user) {
+    // Check if an user is already authenticated
+    if(!req.user) {
+      User.findOne({ 'facebook.id': profile.id }, function(err, user) {
 
-      if (err) return done(err);
+        if (err) return done(err);
 
-      if (user) {
+        if (user) {
+          return done(null, user);
+        } else {
+
+          var newUser = new User({
+            facebook: {
+              id: profile.id,
+              token: token,
+              name: profile.name.givenName + ' ' + profile.name.familyName,
+              email: profile.emails[0].value
+            }
+          });
+
+          newUser.save(function(err) {
+            if (err) throw err;
+            return done(null, newUser);
+          });
+        }
+      });
+    } else {
+      var user = req.user;
+      user.facebook = {
+        id: profile.id,
+        token: token,
+        name: profile.name.givenName + ' ' + profile.name.familyName,
+        email: profile.emails[0].value
+      };
+
+
+      user.save(function(err) {
+        if (err) throw err;
         return done(null, user);
-      } else {
-
-        var newUser = new User({
-          facebook: {
-            id: profile.id,
-            token: token,
-            name: profile.name.givenName + ' ' + profile.name.familyName,
-            email: profile.emails[0].value
-          }
-        });
-
-        newUser.save(function(err) {
-          if (err) throw err;
-          return done(null, newUser);
-        });
-      }
-    })
+      });
+    }
   });
 
 }));
@@ -124,65 +160,95 @@ passport.use(new FacebookStrategy({
 passport.use(new TwitterStrategy({
   consumerKey: authConfig.twitterAuth.consumerKey,
   consumerSecret: authConfig.twitterAuth.consumerSecret,
-  callbackURL: authConfig.twitterAuth.callbackURL
-}, function(token, tokenSecret, profile, done) {
+  callbackURL: authConfig.twitterAuth.callbackURL,
+  passReqToCallback: true
+}, function(req, token, tokenSecret, profile, done) {
 
   process.nextTick(function() {
 
-    User.findOne({ 'twitter.id' : profile.id }, function(err, user) {
-      if (err) return done(err);
+    if(!req.user) {
+      User.findOne({ 'twitter.id' : profile.id }, function(err, user) {
+        if (err) return done(err);
 
-      if (user) {
+        if (user) {
+          return done(null, user);
+        } else {
+
+          var newUser = new User({
+            twitter: {
+              id: profile.id,
+              token: token,
+              username: profile.username,
+              displayName: profile.displayName
+            }
+          });
+
+          newUser.save(function(err) {
+            if (err) throw err;
+            return done(null, newUser);
+          });
+        }
+      });
+    } else {
+      var user = req.user;
+      user.twitter = {
+        id: profile.id,
+        token: token,
+        username: profile.username,
+        displayName: profile.displayName
+      };
+
+      user.save(function(err) {
+        if (err) throw err;
         return done(null, user);
-      } else {
-
-        var newUser = new User({
-          twitter: {
-            id: profile.id,
-            token: token,
-            username: profile.username,
-            displayName: profile.displayName
-          }
-        });
-
-        newUser.save(function(err) {
-          if (err) throw err;
-          return done(null, newUser);
-        });
-      }
-    })
-
-  })
+      });
+    }
+  });
 
 }));
 
 passport.use(new GoogleStrategy({
   clientID: authConfig.googleAuth.clientID,
   clientSecret: authConfig.googleAuth.clientSecret,
-  callbackURL: authConfig.googleAuth.callbackURL
-}, function(token, refreshToken, profile, done) {
+  callbackURL: authConfig.googleAuth.callbackURL,
+  passReqToCallback: true
+}, function(req, token, refreshToken, profile, done) {
   process.nextTick(function() {
+    if (!req.user) {
+      User.findOne({'google.id': profile.id}, function(err, user) {
+        if (err) return done(err);
 
-    User.findOne({'google.id': profile.id}, function(err, user) {
-      if (err) return done(err);
+        if (user) {
+          return done(null, user);
+        } else {
 
-      if (user) {
+          var newUser = new User({
+            google: {
+              id: profile.id, token: token, name: profile.displayName, email: profile.emails[0].value
+            }
+          });
+
+          newUser.save(function(err) {
+            if (err) throw err;
+            return done(null, newUser);
+          });
+        }
+      });
+    } else {
+      var user = req.user;
+      user.google = {
+        id: profile.id,
+        token: token,
+        name: profile.displayName,
+        email: profile.emails[0].value
+      };
+
+      user.save(function(err) {
+        if (err) throw err;
         return done(null, user);
-      } else {
-
-        var newUser = new User({
-          google: {
-            id: profile.id, token: token, name: profile.displayName, email: profile.emails[0].value
-          }
-        });
-
-        newUser.save(function(err) {
-          if (err) throw err;
-          return done(null, newUser);
-        });
-      }
-    })
-  })
+      });
+    }
+  });
 }));
 
 
@@ -210,20 +276,47 @@ app.get('/auth/google/callback', passport.authenticate('google', {
   failureRedirect: '/login'
 }));
 
+app.get('/connect/local', function(req, res) {
+  res.render('connect-local', { message: req.flash('loginMessage'), csrfToken: req.csrfToken()});
+});
+app.post('/connect/local', passport.authenticate('signup', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/connect/local',
+  failureFlash: true
+}));
+
+app.get('/connect/twitter', passport.authorize('twitter', { scope: 'email' }));
+app.get('/connect/twitter', passport.authorize('twitter-signup', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/connect/twitter',
+  failureFlash: true
+}));
+
+app.get('/connect/google', passport.authorize('google', { scope: ['profile', 'email']}));
+app.get('/connect/google', passport.authorize('google-signup', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/connect/google',
+  failureFlash: true
+}));
+
+app.get('/connect/facebook', passport.authorize('facebook', { scope: 'email' }));
+app.get('/connect/facebook', passport.authorize('facebook', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/connect/facebook',
+  failureFlash: true
+}));
+
 app.get('/logout', function(req, res) {
   req.logout();
   res.redirect('/login');
 });
 
 passport.serializeUser(function(user, done) {
-  console.log(user)
   done(null, user.id);
 });
 
 passport.deserializeUser(function(id, done) {
-  console.log(id)
   User.findById(id, function(err, user) {
-    console.log('found', user)
     done(err, user);
   })
 });
