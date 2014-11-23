@@ -8,6 +8,7 @@ var passport             = require('passport');
 var LocalStrategy        = require('passport-local').Strategy;
 var TwitterStrategy      = require('passport-twitter').Strategy;
 var FacebookStrategy     = require('passport-facebook').Strategy;
+var GoogleStrategy       = require('passport-google-oauth').OAuth2Strategy;
 var flash                = require('connect-flash');
 var authConfig           = require('./config/auth');
 var app                  = express();
@@ -155,6 +156,36 @@ passport.use(new TwitterStrategy({
 
 }));
 
+passport.use(new GoogleStrategy({
+  clientID: authConfig.googleAuth.clientID,
+  clientSecret: authConfig.googleAuth.clientSecret,
+  callbackURL: authConfig.googleAuth.callbackURL
+}, function(token, refreshToken, profile, done) {
+  process.nextTick(function() {
+
+    User.findOne({'google.id': profile.id}, function(err, user) {
+      if (err) return done(err);
+
+      if (user) {
+        return done(null, user);
+      } else {
+
+        var newUser = new User({
+          google: {
+            id: profile.id, token: token, name: profile.displayName, email: profile.emails[0].value
+          }
+        });
+
+        newUser.save(function(err) {
+          if (err) throw err;
+          return done(null, newUser);
+        });
+      }
+    })
+  })
+}));
+
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -173,6 +204,11 @@ app.get('/auth/twitter/callback', passport.authenticate('twitter', {
   failureRedirect: '/login'
 }));
 
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email']}));
+app.get('/auth/google/callback', passport.authenticate('google', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login'
+}));
 
 app.get('/logout', function(req, res) {
   req.logout();
