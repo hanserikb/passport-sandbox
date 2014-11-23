@@ -120,22 +120,34 @@ passport.use(new FacebookStrategy({
 }));
 
 
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.get('/auth/facebook', passport.authenticate('facebook', { scope: 'email' }));
+app.get('/auth/facebook/callback', passport.authenticate('facebook', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login'
+}));
+
+app.get('/logout', function(req, res) {
+  req.logout();
+  res.redirect('/login');
+});
 
 passport.serializeUser(function(user, done) {
   console.log(user)
-  done(null, user._id);
+  done(null, user.id);
 });
 
 passport.deserializeUser(function(id, done) {
   console.log(id)
-  User.findOne({_id: id }, function(err, user) {
+  User.findById(id, function(err, user) {
     console.log('found', user)
     done(err, user);
   })
 });
 
-app.use(passport.initialize());
-app.use(passport.session());
+
 
 
 // Set flash messages as local view variables and delete its session, preventing
