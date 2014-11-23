@@ -1,0 +1,8 @@
+<h2>Register</h2>
+
+<form action="register" method="POST">
+    <input type="text" id="username" name="username"/>
+    <input type="password" id="password" name="password"/>
+    <input type="hidden" name="_csrf" value="{{csrfToken}}">
+    <input type="submit" value="Register"/>
+</form>

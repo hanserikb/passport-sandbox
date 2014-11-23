@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Authentication</title>
+</head>
+<body>
+{{#if error}}
+    sd
+    {{error}}
+{{/if}}
+{{#if message}}
+    {{message}}
+{{/if}}
+{{#if flash}}
+  {{flash.notice}}
+  {{flash.error}}
+{{/if}}
+{{#if messages}}
+  {{#each messages}}
+    {{this}}
+  {{/each}}
+{{/if}}
+{{{body}}}
+
+</body>
+</html>
