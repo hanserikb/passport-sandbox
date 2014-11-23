@@ -2,9 +2,19 @@
 
 <p>Secure area</p>
 
-{{user._id }}
-{{user.username}}
-{{user.password}}
+  Local user
+  {{user.local._id }} </br>
+  {{user.local.username}}</br>
+  {{user.local.password}}</br>
+
+  Facebook user</br>
+  {{user.facebook.name}}</br>
 
 
-{{user.facebook.name}}
+  Twitter user</br>
+  {{user.twitter.displayName}}</br>
+  {{user.twitter.name}}</br>
+
+
+
+<a href="/logout">Logout</a>

@@ -6,6 +6,7 @@ var csrf                 = require('csurf');
 var mongoose             = require('mongoose');
 var passport             = require('passport');
 var LocalStrategy        = require('passport-local').Strategy;
+var TwitterStrategy      = require('passport-twitter').Strategy;
 var FacebookStrategy     = require('passport-facebook').Strategy;
 var flash                = require('connect-flash');
 var authConfig           = require('./config/auth');
@@ -119,15 +120,59 @@ passport.use(new FacebookStrategy({
 
 }));
 
+passport.use(new TwitterStrategy({
+  consumerKey: authConfig.twitterAuth.consumerKey,
+  consumerSecret: authConfig.twitterAuth.consumerSecret,
+  callbackURL: authConfig.twitterAuth.callbackURL
+}, function(token, tokenSecret, profile, done) {
+
+  process.nextTick(function() {
+
+    User.findOne({ 'twitter.id' : profile.id }, function(err, user) {
+      if (err) return done(err);
+
+      if (user) {
+        return done(null, user);
+      } else {
+
+        var newUser = new User({
+          twitter: {
+            id: profile.id,
+            token: token,
+            username: profile.username,
+            displayName: profile.displayName
+          }
+        });
+
+        newUser.save(function(err) {
+          if (err) throw err;
+          return done(null, newUser);
+        });
+      }
+    })
+
+  })
+
+}));
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+
+
 
 app.get('/auth/facebook', passport.authenticate('facebook', { scope: 'email' }));
 app.get('/auth/facebook/callback', passport.authenticate('facebook', {
   successRedirect: '/dashboard',
   failureRedirect: '/login'
 }));
+
+app.get('/auth/twitter', passport.authenticate('twitter'));
+app.get('/auth/twitter/callback', passport.authenticate('twitter', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login'
+}));
+
 
 app.get('/logout', function(req, res) {
   req.logout();
