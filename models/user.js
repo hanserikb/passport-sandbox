@@ -1,8 +1,8 @@
 var mongoose = require('mongoose');
-
 var Schema = mongoose.Schema;
 var ObjectId = Schema.ObjectId;
 var bcrypt = require('bcrypt');
+
 var userSchema = new Schema({
   local: {
     id: ObjectId,
@@ -31,7 +31,6 @@ var userSchema = new Schema({
 
 userSchema.methods.generateHash = function(password, cb) {
   var salt = bcrypt.genSaltSync(10);
-  console.log('salted')
   return bcrypt.hashSync(password, salt);
 };
 
@@ -41,6 +40,4 @@ userSchema.methods.validPassword = function(password, cb) {
   });
 };
 
-var User = mongoose.model('User', userSchema);
-
-module.exports = User;
+module.exports = mongoose.model('User', userSchema);
