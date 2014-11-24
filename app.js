@@ -5,7 +5,10 @@ var session              = require('express-session');
 var csrf                 = require('csurf');
 var passport             = require('passport');
 var app                  = express();
-require('mongoose').connect(require('./config/database').databaseUrl);
+var mongoose             = require('mongoose');
+var dbConfig             = require('./config/database');
+
+mongoose.connect(dbConfig.databaseUrl);
 require('./config/passport')(passport);
 
 // Setup session
